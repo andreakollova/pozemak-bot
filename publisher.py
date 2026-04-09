@@ -13,6 +13,7 @@ async def publish_article(
     image_url: str,
     source_url: str,
     supabase_id: str | None = None,
+    top_story: bool = False,
 ) -> dict:
     """Update existing Supabase article with Slovak translation via the website API.
 
@@ -36,7 +37,7 @@ async def publish_article(
             # Update existing article with Slovak translation and mark as published
             response = await client.patch(
                 f"{WEBSITE_API_URL.rstrip('/')}/api/admin/articles/{supabase_id}",
-                json={"title_sk": title, "text_sk": body, "published": True},
+                json={"title_sk": title, "text_sk": body, "published": True, "top_story": top_story},
                 headers=headers,
             )
         else:

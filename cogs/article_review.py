@@ -159,6 +159,7 @@ async def _publish_article(article: dict, post_ig: bool) -> str:
     await publish_article(
         title, body, article["image_url"] or "", article["source_url"] or "",
         supabase_id=article["supabase_id"],
+        top_story=post_ig,
     )
     await update_article_status_by_supabase_id(article["supabase_id"], "approved")
 
