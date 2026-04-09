@@ -1,0 +1,143 @@
+import asyncio
+import logging
+import os
+import re
+import tempfile
+from pathlib import Path
+
+import certifi
+import httpx
+
+logger = logging.getLogger(__name__)
+
+# Patterns to detect video URLs inside article text
+_VIDEO_PATTERNS = [
+    r"https?://(?:www\.)?youtube\.com/watch\?[^\s\"'<>]+",
+    r"https?://youtu\.be/[^\s\"'<>]+",
+    r"https?://(?:www\.)?vimeo\.com/\d+[^\s\"'<>]*",
+    r"https?://[^\s\"'<>]+\.mp4(?:\?[^\s\"'<>]*)?",
+]
+_VIDEO_RE = re.compile("|".join(_VIDEO_PATTERNS), re.IGNORECASE)
+
+
+async def find_video_url(text: str) -> str | None:
+    """Return the first video URL found in text, or None."""
+    match = _VIDEO_RE.search(text or "")
+    return match.group(0) if match else None
+
+
+async def upload_to_catbox(file_path: str) -> str | None:
+    """Upload to gofile.io (mobile-friendly download page).
+    Falls back to catbox.moe on failure.
+    """
+    try:
+        file_size_mb = os.path.getsize(file_path) / 1024 / 1024
+        logger.info(f"Uploading {file_size_mb:.1f} MB to gofile.io…")
+
+        async with httpx.AsyncClient(verify=certifi.where(), timeout=30) as client:
+            srv_resp = await client.get("https://api.gofile.io/servers")
+            srv_resp.raise_for_status()
+            server = srv_resp.json()["data"]["servers"][0]["name"]
+
+        async with httpx.AsyncClient(verify=certifi.where(), timeout=600) as client:
+            with open(file_path, "rb") as f:
+                resp = await client.post(
+                    f"https://{server}.gofile.io/contents/uploadfile",
+                    files={"file": (os.path.basename(file_path), f, "video/mp4")},
+                )
+        resp.raise_for_status()
+        data = resp.json()
+        if data.get("status") == "ok":
+            url = data["data"]["downloadPage"]
+            logger.info(f"gofile.io OK: {url}")
+            return url
+        logger.error(f"gofile.io unexpected: {data}")
+    except Exception as exc:
+        logger.error(f"gofile.io upload error: {exc}", exc_info=True)
+
+    # Fallback: catbox.moe
+    try:
+        logger.info("Falling back to catbox.moe…")
+        async with httpx.AsyncClient(verify=certifi.where(), timeout=600) as client:
+            with open(file_path, "rb") as f:
+                resp = await client.post(
+                    "https://catbox.moe/user/api.php",
+                    data={"reqtype": "fileupload"},
+                    files={"fileToUpload": (os.path.basename(file_path), f, "video/mp4")},
+                )
+        resp.raise_for_status()
+        url = resp.text.strip()
+        if url.startswith("https://"):
+            logger.info(f"catbox.moe fallback OK: {url}")
+            return url
+    except Exception as exc:
+        logger.error(f"catbox.moe fallback error: {exc}", exc_info=True)
+
+    return None
+
+
+async def download_video(url: str, output_dir: str | None = None) -> tuple[str | None, str | None]:
+    """Download a video using yt-dlp.
+
+    Returns (file_path, description). Either can be None on failure.
+    No compression — best available quality.
+    """
+    work_dir = output_dir or tempfile.mkdtemp(prefix="pozemak_video_")
+    try:
+        loop = asyncio.get_event_loop()
+        result = await loop.run_in_executor(None, _yt_dlp_download, url, work_dir)
+    except Exception as exc:
+        logger.error(f"download_video yt-dlp error: {exc}", exc_info=True)
+        return None, None
+
+    if result is None:
+        return None, None
+
+    file_path, description = result
+    if file_path:
+        size = os.path.getsize(file_path) / 1024 / 1024
+        logger.info(f"Downloaded: {file_path} ({size:.1f} MB)")
+    return file_path, description
+
+
+def _yt_dlp_download(url: str, work_dir: str) -> tuple[str | None, str | None] | None:
+    """Blocking helper — runs yt-dlp, returns (file_path, description)."""
+    try:
+        import yt_dlp  # type: ignore
+    except ImportError:
+        logger.error("yt-dlp is not installed")
+        return None
+
+    output_template = os.path.join(work_dir, "%(id)s.%(ext)s")
+    ydl_opts = {
+        "format": "bestvideo[height<=1080]+bestaudio/best[height<=1080]/best",
+        "merge_output_format": "mp4",
+        "outtmpl": output_template,
+        "noplaylist": True,
+        "quiet": True,
+        "no_warnings": True,
+        "http_headers": {
+            "User-Agent": (
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                "AppleWebKit/537.36 (KHTML, like Gecko) "
+                "Chrome/120.0.0.0 Safari/537.36"
+            )
+        },
+    }
+
+    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+        info = ydl.extract_info(url, download=True)
+        if info is None:
+            logger.error("yt-dlp returned no info")
+            return None
+        description = (info.get("title") or "").strip() or None
+
+    mp4_files = list(Path(work_dir).glob("*.mp4"))
+    if not mp4_files:
+        all_files = [f for f in Path(work_dir).iterdir() if f.is_file()]
+        if not all_files:
+            logger.error("yt-dlp: no output file found")
+            return None, description
+        mp4_files = sorted(all_files, key=lambda f: f.stat().st_size, reverse=True)
+
+    return str(mp4_files[0]), description
