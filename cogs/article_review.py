@@ -286,6 +286,14 @@ class ArticleConfirmView(discord.ui.View):
 
     async def _cb_skip(self, interaction: discord.Interaction):
         await update_article_status_by_supabase_id(self.article["supabase_id"], "rejected")
+        # Mark as rejected in Supabase so it never comes back after bot restart
+        try:
+            from supabase import create_client
+            from config import SUPABASE_URL, SUPABASE_KEY
+            db = create_client(SUPABASE_URL, SUPABASE_KEY)
+            db.table("articles").update({"rejected": True}).eq("id", self.article["supabase_id"]).execute()
+        except Exception as e:
+            logger.error(f"Failed to mark article as rejected in Supabase: {e}")
         if interaction.message and interaction.message.embeds:
             emb = interaction.message.embeds[0].copy()
             emb.colour = discord.Color.red()
@@ -481,6 +489,7 @@ class ArticleReviewCog(commands.Cog):
                 db.table("articles")
                 .select("*")
                 .eq("published", False)
+                .neq("rejected", True)
                 .order("scraped_at", desc=True)
                 .limit(100)
                 .execute()
