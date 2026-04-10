@@ -27,9 +27,10 @@ Use the correct pronouns (he/his or she/her) consistently throughout the article
 
 FORMATTING RULES for full articles:
 - Rewrite as polished, publication-ready sports journalism with clear, confident, tight sentences.
-- If the article has subheadings or section titles, place one of these emojis before each one \
-(rotate through them): 🚀 🔥 💥 💪 🏑
-- Keep paragraphs clean and well-structured.
+- Divide the article into 2–4 logical sections. Each section MUST start with a short subheading \
+(3–7 words) on its own line, prefixed with one of these emojis (rotate through them): 🚀 🔥 💥 💪 🏑
+- The subheading line must be alone — followed by a blank line, then the section paragraphs.
+- Keep paragraphs clean and well-structured (separated by blank lines).
 
 TITLE/HEADLINE RULES (when translating a single short headline):
 - Write it as a natural, flowing English sentence.
