@@ -151,10 +151,18 @@ def build_instagram_caption(title: str, body: str, flag: str = "🇳🇱", credi
     return caption
 
 
+def _sanitize_body(text: str) -> str:
+    """Remove entire sentences containing email addresses."""
+    text = re.sub(r'[^.!?\n]*@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}[^.!?\n]*[.!?]?', '', text)
+    text = re.sub(r' {2,}', ' ', text)
+    text = re.sub(r'\n{3,}', '\n\n', text)
+    return text.strip()
+
+
 async def _publish_article(article: dict, post_ig: bool) -> str:
     """Publish article to website and optionally Instagram."""
     title = article["title_sk"] or ""
-    body  = article["body_sk"]  or ""
+    body  = _sanitize_body(article["body_sk"] or "")
 
     await publish_article(
         title, body, article["image_url"] or "", article["source_url"] or "",
