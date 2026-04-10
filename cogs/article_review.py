@@ -491,6 +491,7 @@ class ArticleReviewCog(commands.Cog):
                 .select("*")
                 .eq("published", False)
                 .neq("rejected", True)
+                .neq("discord_sent", True)
                 .order("scraped_at", desc=True)
                 .limit(100)
                 .execute()
@@ -501,10 +502,7 @@ class ArticleReviewCog(commands.Cog):
                 logger.error(f"Channel {DISCORD_CHANNEL_ID} not found")
                 return
 
-            new_articles = []
-            for article in reversed(result.data):
-                if not await is_processed(str(article["id"])):
-                    new_articles.append(article)
+            new_articles = list(reversed(result.data))
 
             if not new_articles:
                 return
@@ -642,6 +640,8 @@ class ArticleReviewCog(commands.Cog):
     async def _send_batch(self, channel: discord.TextChannel, batch: list[dict]):
         """Send each article as an individual persistent ArticleConfirmView message."""
         logger.info(f"Sending {len(batch)} article(s) to Discord")
+        from supabase import create_client
+        _db = create_client(SUPABASE_URL, SUPABASE_KEY)
 
         _COUNTRY_NAMES = {
             "🇳🇱": "Netherlands", "🇬🇧": "Great Britain", "🇮🇪": "Ireland",
@@ -688,6 +688,11 @@ class ArticleReviewCog(commands.Cog):
             )
             a["discord_message_id"] = str(msg.id)
             await set_batch_message_id([a["supabase_id"]], str(msg.id), str(channel.id))
+            # Mark as sent in Supabase — survives bot restarts, no more SQLite dependency
+            try:
+                _db.table("articles").update({"discord_sent": True}).eq("id", a["supabase_id"]).execute()
+            except Exception as _e:
+                logger.warning(f"Could not mark discord_sent for {a['supabase_id']}: {_e}")
             logger.info(f"Sent article {a['supabase_id'][:8]} → Discord msg {msg.id}")
             await asyncio.sleep(0.5)
 
