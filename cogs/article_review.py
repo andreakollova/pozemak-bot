@@ -441,15 +441,34 @@ class ArticleReviewCog(commands.Cog):
         self.watch_trigger.cancel()
 
     async def cog_load(self):
-        """Re-register persistent views for all pending articles on startup."""
+        """Re-register persistent views for all pending articles on startup.
+        Uses Supabase as source of truth so views survive bot restarts / SQLite wipes."""
         try:
-            pending = await get_all_pending()
+            from supabase import create_client
+            db = create_client(SUPABASE_URL, SUPABASE_KEY)
+            result = (
+                db.table("articles")
+                .select("id, title_sk, text_sk, image_url, url")
+                .eq("discord_sent", True)
+                .eq("published", False)
+                .neq("rejected", True)
+                .order("scraped_at", desc=True)
+                .limit(100)
+                .execute()
+            )
             count = 0
-            for row in pending:
-                self.bot.add_view(ArticleConfirmView(row))
+            for row in result.data:
+                article = {
+                    "supabase_id": str(row["id"]),
+                    "title_sk": row.get("title_sk") or "",
+                    "body_sk": row.get("text_sk") or "",
+                    "image_url": row.get("image_url") or "",
+                    "source_url": row.get("url") or "",
+                }
+                self.bot.add_view(ArticleConfirmView(article))
                 count += 1
             if count:
-                logger.info(f"Restored {count} persistent ArticleConfirmView(s)")
+                logger.info(f"Restored {count} persistent ArticleConfirmView(s) from Supabase")
         except Exception as e:
             logger.warning(f"Could not restore views: {e}")
 
