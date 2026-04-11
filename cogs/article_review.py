@@ -625,35 +625,40 @@ class ArticleReviewCog(commands.Cog):
                 import tempfile, os as _os, shutil
                 tmp_dir = tempfile.mkdtemp(prefix="pozemak_video_")
                 try:
+                    # Generate adjectives early so they appear in all paths
+                    adjectives = await generate_video_adjectives(title)
+                    adj_line = "  ".join(adjectives)
+
                     status_msg = await channel.send(
-                        f"{category_icon} **{title}**\n⏳ Sťahujem video v plnej kvalite…"
+                        f"{category_icon} **{title}**\n⏳ Downloading video…"
                     )
                     video_path, description = await download_video(yt_url, tmp_dir)
 
                     if video_path and _os.path.exists(video_path):
                         size_mb = _os.path.getsize(video_path) / 1024 / 1024
                         await status_msg.edit(
-                            content=f"{category_icon} **{title}**\n⏳ Uploadujem ({size_mb:.0f} MB)…"
+                            content=f"{category_icon} **{title}**\n⏳ Uploading ({size_mb:.0f} MB)…"
                         )
                         download_url = await upload_to_catbox(video_path)
 
                         # Build final message
                         lines = [f"{category_icon} **{title}**"]
+                        lines.append(adj_line)
                         if download_url:
-                            lines.append(f"📥 [Stiahnuť video ({size_mb:.0f} MB)]({download_url})")
+                            lines.append(f"📥 [Download video ({size_mb:.0f} MB)]({download_url})")
                         lines.append(f"▶️ {yt_url}")
-                        if description:
-                            lines.append(f"\n🎬 {description}")
-                        adjectives = await generate_video_adjectives(description or title)
-                        lines.append("  ".join(adjectives))
                         lines.append(f"\n{credits}")
 
                         await status_msg.edit(content="\n".join(lines))
                         logger.info(f"Video sent: {download_url or yt_url}")
                     else:
-                        await status_msg.edit(
-                            content=f"{category_icon} **{title}**\n▶️ {yt_url}\n⚠️ Stiahnutie zlyhalo\n{credits}"
-                        )
+                        lines = [
+                            f"{category_icon} **{title}**",
+                            adj_line,
+                            f"▶️ {yt_url}",
+                            f"\n{credits}",
+                        ]
+                        await status_msg.edit(content="\n".join(lines))
                         logger.warning(f"Video download failed for {yt_url}")
                 except Exception as exc:
                     logger.error(f"Video send error for {yt_url}: {exc}", exc_info=True)
