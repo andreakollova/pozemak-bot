@@ -458,7 +458,7 @@ class ArticleReviewCog(commands.Cog):
                 db.table("articles")
                 .select("id, title_sk, text_sk, image_url, url")
                 .eq("discord_sent", True)
-                .eq("published", False)
+                .or_("published.eq.false,published.is.null")
                 .neq("rejected", True)
                 .order("scraped_at", desc=True)
                 .limit(100)
@@ -516,7 +516,7 @@ class ArticleReviewCog(commands.Cog):
             result = (
                 db.table("articles")
                 .select("*")
-                .eq("published", False)
+                .or_("published.eq.false,published.is.null")
                 .neq("rejected", True)
                 .neq("discord_sent", True)
                 .order("scraped_at", desc=True)
