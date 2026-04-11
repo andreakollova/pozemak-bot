@@ -64,6 +64,8 @@ _SOURCE_FLAGS: list[tuple[str, str, str]] = [
     ("hockey.be",           "🇧🇪", "Hockey Belgium"),
     ("hockey.nl",           "🇳🇱", "HockeyNL"),
     ("hockeyindia.org",     "🇮🇳", "Hockey India"),
+    ("eurohockey.org",      "🇪🇺", "EuroHockey"),
+    ("fih.hockey",          "🏑", "FIH Hockey"),
 ]
 
 
