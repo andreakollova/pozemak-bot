@@ -10,6 +10,16 @@ TRIGGER=/tmp/pozemak_poll_now
 
 echo "[$(date '+%Y-%m-%d %H:%M:%S')] Starting scraper run" >> "$LOG_DIR/cron.log"
 
+# Wait for network to be ready (Mac may have just woken from sleep)
+for i in {1..10}; do
+  if curl -s --max-time 3 https://supabase.com > /dev/null 2>&1; then
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] Network ready" >> "$LOG_DIR/cron.log"
+    break
+  fi
+  echo "[$(date '+%Y-%m-%d %H:%M:%S')] Waiting for network... ($i/10)" >> "$LOG_DIR/cron.log"
+  sleep 5
+done
+
 # Articles
 cd "$SCRAPER_DIR"
 $PYTHON scraper.py >> "$LOG_DIR/cron.log" 2>&1
