@@ -680,7 +680,7 @@ class ArticleReviewCog(commands.Cog):
             "🇳🇱": "Netherlands", "🇬🇧": "Great Britain", "🇮🇪": "Ireland",
             "🏴󠁧󠁢󠁳󠁣󠁴󠁿": "Scotland", "🇦🇺": "Australia", "🇪🇸": "Spain",
             "🇦🇷": "Argentina", "🇩🇪": "Germany", "🇧🇪": "Belgium",
-            "🇮🇳": "India",
+            "🇮🇳": "India", "🇪🇺": "EuroHockey", "🏑": "FIH Hockey",
         }
         _EMBED_COLORS = {
             "🇳🇱": discord.Color.orange(),
@@ -693,6 +693,8 @@ class ArticleReviewCog(commands.Cog):
             "🇩🇪": discord.Color.from_rgb(80, 80, 80),
             "🇧🇪": discord.Color.from_rgb(0, 100, 200),
             "🇮🇳": discord.Color.from_rgb(255, 153, 51),   # India saffron
+            "🇪🇺": discord.Color.from_rgb(0, 70, 153),     # EuroHockey blue
+            "🏑": discord.Color.from_rgb(0, 150, 100),      # FIH green
         }
 
         for a in batch:
