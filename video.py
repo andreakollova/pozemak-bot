@@ -110,8 +110,9 @@ def _yt_dlp_download(url: str, work_dir: str) -> tuple[str | None, str | None] |
 
     output_template = os.path.join(work_dir, "%(id)s.%(ext)s")
     ydl_opts = {
-        "format": "bestvideo[height<=1080]+bestaudio/best[height<=1080]/best",
-        "merge_output_format": "mp4",
+        # Prefer pre-merged mp4 streams (720p or 360p) that don't require ffmpeg.
+        # Falls back to 'best' (single-stream) which also needs no merging.
+        "format": "22/18/best[height<=720][ext=mp4]/best[ext=mp4]/best",
         "outtmpl": output_template,
         "noplaylist": True,
         "quiet": True,
