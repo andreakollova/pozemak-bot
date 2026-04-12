@@ -518,7 +518,7 @@ class ArticleReviewCog(commands.Cog):
                 db.table("articles")
                 .select("*")
                 .neq("rejected", True)
-                .neq("discord_sent", True)
+                .or_("discord_sent.is.null,discord_sent.eq.false")
                 .gte("scraped_at", cutoff)
                 .order("scraped_at", desc=True)
                 .limit(100)
