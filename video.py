@@ -76,18 +76,66 @@ async def upload_to_catbox(file_path: str) -> str | None:
     return None
 
 
+async def _cobalt_download(url: str, work_dir: str) -> tuple[str | None, str | None]:
+    """Download video via cobalt.tools API — bypasses YouTube IP restrictions on cloud servers."""
+    try:
+        async with httpx.AsyncClient(timeout=30) as client:
+            resp = await client.post(
+                "https://api.cobalt.tools/",
+                json={"url": url},
+                headers={"Accept": "application/json", "Content-Type": "application/json"},
+            )
+            resp.raise_for_status()
+            data = resp.json()
+
+        status = data.get("status")
+        if status not in ("stream", "redirect", "tunnel"):
+            logger.warning(f"cobalt.tools unexpected status: {status} — {data}")
+            return None, None
+
+        stream_url = data.get("url")
+        if not stream_url:
+            return None, None
+
+        logger.info(f"cobalt.tools OK — downloading stream…")
+        out_path = os.path.join(work_dir, "video.mp4")
+        async with httpx.AsyncClient(timeout=600, follow_redirects=True) as client:
+            async with client.stream("GET", stream_url) as r:
+                r.raise_for_status()
+                with open(out_path, "wb") as f:
+                    async for chunk in r.aiter_bytes(chunk_size=1024 * 1024):
+                        f.write(chunk)
+
+        if os.path.exists(out_path) and os.path.getsize(out_path) > 0:
+            size = os.path.getsize(out_path) / 1024 / 1024
+            logger.info(f"cobalt.tools downloaded: {size:.1f} MB")
+            return out_path, None
+
+    except Exception as exc:
+        logger.warning(f"cobalt.tools failed: {exc}")
+
+    return None, None
+
+
 async def download_video(url: str, output_dir: str | None = None) -> tuple[str | None, str | None]:
-    """Download a video using yt-dlp.
+    """Download a video. Tries cobalt.tools first (works on cloud), falls back to yt-dlp.
 
     Returns (file_path, description). Either can be None on failure.
-    No compression — best available quality.
     """
     work_dir = output_dir or tempfile.mkdtemp(prefix="pozemak_video_")
+
+    # Try cobalt.tools first — works on Render/cloud (bypasses YouTube IP blocks)
+    file_path, description = await _cobalt_download(url, work_dir)
+    if file_path:
+        return file_path, description
+
+    # Fallback: yt-dlp (works locally)
+    logger.info("cobalt.tools failed — trying yt-dlp…")
     try:
         loop = asyncio.get_event_loop()
         result = await loop.run_in_executor(None, _yt_dlp_download, url, work_dir)
     except Exception as exc:
-        logger.error(f"download_video yt-dlp error: {exc}", exc_info=True)
+        logger.error(f"yt-dlp error: {exc}", exc_info=True)
         return None, None
 
     if result is None:
@@ -96,7 +144,7 @@ async def download_video(url: str, output_dir: str | None = None) -> tuple[str |
     file_path, description = result
     if file_path:
         size = os.path.getsize(file_path) / 1024 / 1024
-        logger.info(f"Downloaded: {file_path} ({size:.1f} MB)")
+        logger.info(f"yt-dlp downloaded: {file_path} ({size:.1f} MB)")
     return file_path, description
 
 
