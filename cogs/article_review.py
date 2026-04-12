@@ -3,7 +3,7 @@ import json
 import logging
 import os
 import re
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 from pathlib import Path
 
 TRIGGER_FILE = Path("/tmp/pozemak_poll_now")
@@ -512,7 +512,6 @@ class ArticleReviewCog(commands.Cog):
             return
         try:
             from supabase import create_client
-            from datetime import timedelta
             db = create_client(SUPABASE_URL, SUPABASE_KEY)
             cutoff = (datetime.now(timezone.utc) - timedelta(days=7)).isoformat()
             result = (
