@@ -76,43 +76,54 @@ async def upload_to_catbox(file_path: str) -> str | None:
     return None
 
 
+_COBALT_INSTANCES = [
+    "https://api.cobalt.tools/",
+    "https://cobalt.api.timelessnesses.me/",
+    "https://cobalt.drgns.space/",
+]
+
+
 async def _cobalt_download(url: str, work_dir: str) -> tuple[str | None, str | None]:
-    """Download video via cobalt.tools API — bypasses YouTube IP restrictions on cloud servers."""
-    try:
-        async with httpx.AsyncClient(timeout=30) as client:
-            resp = await client.post(
-                "https://api.cobalt.tools/",
-                json={"url": url},
-                headers={"Accept": "application/json", "Content-Type": "application/json"},
-            )
-            resp.raise_for_status()
-            data = resp.json()
+    """Download video via cobalt.tools API — bypasses YouTube IP restrictions on cloud servers.
+    Tries multiple cobalt instances in order until one succeeds.
+    """
+    for instance in _COBALT_INSTANCES:
+        try:
+            async with httpx.AsyncClient(timeout=30) as client:
+                resp = await client.post(
+                    instance,
+                    json={"url": url},
+                    headers={"Accept": "application/json", "Content-Type": "application/json"},
+                )
+                resp.raise_for_status()
+                data = resp.json()
 
-        status = data.get("status")
-        if status not in ("stream", "redirect", "tunnel"):
-            logger.warning(f"cobalt.tools unexpected status: {status} — {data}")
-            return None, None
+            status = data.get("status")
+            if status not in ("stream", "redirect", "tunnel"):
+                logger.warning(f"{instance} unexpected status: {status}")
+                continue
 
-        stream_url = data.get("url")
-        if not stream_url:
-            return None, None
+            stream_url = data.get("url")
+            if not stream_url:
+                continue
 
-        logger.info(f"cobalt.tools OK — downloading stream…")
-        out_path = os.path.join(work_dir, "video.mp4")
-        async with httpx.AsyncClient(timeout=600, follow_redirects=True) as client:
-            async with client.stream("GET", stream_url) as r:
-                r.raise_for_status()
-                with open(out_path, "wb") as f:
-                    async for chunk in r.aiter_bytes(chunk_size=1024 * 1024):
-                        f.write(chunk)
+            logger.info(f"{instance} OK — downloading stream…")
+            out_path = os.path.join(work_dir, "video.mp4")
+            async with httpx.AsyncClient(timeout=600, follow_redirects=True) as client:
+                async with client.stream("GET", stream_url) as r:
+                    r.raise_for_status()
+                    with open(out_path, "wb") as f:
+                        async for chunk in r.aiter_bytes(chunk_size=1024 * 1024):
+                            f.write(chunk)
 
-        if os.path.exists(out_path) and os.path.getsize(out_path) > 0:
-            size = os.path.getsize(out_path) / 1024 / 1024
-            logger.info(f"cobalt.tools downloaded: {size:.1f} MB")
-            return out_path, None
+            if os.path.exists(out_path) and os.path.getsize(out_path) > 0:
+                size = os.path.getsize(out_path) / 1024 / 1024
+                logger.info(f"cobalt downloaded: {size:.1f} MB via {instance}")
+                return out_path, None
 
-    except Exception as exc:
-        logger.warning(f"cobalt.tools failed: {exc}")
+        except Exception as exc:
+            logger.warning(f"cobalt instance {instance} failed: {exc}")
+            continue
 
     return None, None
 
