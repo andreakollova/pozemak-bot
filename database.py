@@ -73,7 +73,7 @@ async def add_pending_article(
     async with aiosqlite.connect(DB_PATH) as db:
         await db.execute(
             """
-            INSERT INTO processed_articles
+            INSERT OR IGNORE INTO processed_articles
                 (supabase_id, discord_message_id, channel_id, status,
                  word_replacements, title_sk, body_sk, image_url, source_url, created_at)
             VALUES (?, ?, ?, 'pending', '{}', ?, ?, ?, ?, ?)

@@ -300,7 +300,7 @@ class ArticleConfirmView(discord.ui.View):
             from supabase import create_client
             from config import SUPABASE_URL, SUPABASE_KEY
             db = create_client(SUPABASE_URL, SUPABASE_KEY)
-            db.table("articles").update({"rejected": True}).eq("id", self.article["supabase_id"]).execute()
+            db.table("articles").update({"rejected": True, "published": False}).eq("id", self.article["supabase_id"]).execute()
         except Exception as e:
             logger.error(f"Failed to mark article as rejected in Supabase: {e}")
         if interaction.message and interaction.message.embeds:
@@ -512,12 +512,15 @@ class ArticleReviewCog(commands.Cog):
             return
         try:
             from supabase import create_client
+            from datetime import timedelta
             db = create_client(SUPABASE_URL, SUPABASE_KEY)
+            cutoff = (datetime.now(timezone.utc) - timedelta(days=7)).isoformat()
             result = (
                 db.table("articles")
                 .select("*")
                 .neq("rejected", True)
                 .neq("discord_sent", True)
+                .gte("scraped_at", cutoff)
                 .order("scraped_at", desc=True)
                 .limit(100)
                 .execute()
