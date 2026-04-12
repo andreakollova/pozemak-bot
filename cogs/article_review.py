@@ -18,8 +18,6 @@ from database import (
     update_article_status_by_supabase_id,
     set_batch_message_id,
     get_all_pending,
-    is_video_processed,
-    mark_video_processed,
 )
 from translation import translate_to_english, generate_video_adjectives
 from publisher import publish_article
@@ -590,6 +588,7 @@ class ArticleReviewCog(commands.Cog):
             result = (
                 db.table("videos")
                 .select("id, title, title_sk, youtube_url, thumbnail_url, category")
+                .neq("discord_sent", True)
                 .order("scraped_at", desc=True)
                 .limit(20)
                 .execute()
@@ -599,11 +598,13 @@ class ArticleReviewCog(commands.Cog):
             if not channel:
                 return
 
-            new_videos = []
-            for video in result.data:
-                if not await is_video_processed(str(video["id"])):
-                    new_videos.append(video)
-                    await mark_video_processed(str(video["id"]))
+            new_videos = result.data or []
+            # Mark all as sent in Supabase immediately to prevent re-sending on restart
+            for video in new_videos:
+                try:
+                    db.table("videos").update({"discord_sent": True}).eq("id", video["id"]).execute()
+                except Exception as _e:
+                    logger.warning(f"Could not mark discord_sent for video {video['id']}: {_e}")
 
             if not new_videos:
                 return

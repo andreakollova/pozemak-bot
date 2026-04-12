@@ -115,8 +115,6 @@ def _yt_dlp_download(url: str, work_dir: str) -> tuple[str | None, str | None] |
         "format": "22/18/best[height<=720][ext=mp4]/best[ext=mp4]/best",
         "outtmpl": output_template,
         "noplaylist": True,
-        "quiet": True,
-        "no_warnings": True,
         "http_headers": {
             "User-Agent": (
                 "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
@@ -127,7 +125,11 @@ def _yt_dlp_download(url: str, work_dir: str) -> tuple[str | None, str | None] |
     }
 
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-        info = ydl.extract_info(url, download=True)
+        try:
+            info = ydl.extract_info(url, download=True)
+        except Exception as exc:
+            logger.error(f"yt-dlp extract_info failed for {url}: {exc}")
+            return None
         if info is None:
             logger.error("yt-dlp returned no info")
             return None
