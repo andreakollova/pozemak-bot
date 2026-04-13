@@ -627,9 +627,9 @@ class ArticleReviewCog(commands.Cog):
             await channel.send("\n".join(lines))
             logger.info(f"Video sent to Discord: {v['id']} — {title[:60]}")
 
-            # Mark as sent
+            # Mark as sent and clear download_url to free the slot for the next video
             try:
-                db.table("videos").update({"discord_sent": True}).eq("id", v["id"]).execute()
+                db.table("videos").update({"discord_sent": True, "download_url": None}).eq("id", v["id"]).execute()
             except Exception as _e:
                 logger.warning(f"Could not mark discord_sent for video {v['id']}: {_e}")
 
