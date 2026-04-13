@@ -582,13 +582,9 @@ class ArticleReviewCog(commands.Cog):
             logger.error(f"Poll error: {e}", exc_info=True)
 
     async def _check_new_videos(self):
-        """Send at most one video per day to Discord. No download — just the YouTube link."""
+        """Send the next video with a ready download_url to Discord."""
         if not SUPABASE_URL or not SUPABASE_KEY:
             return
-
-        today = datetime.now(timezone.utc).date()
-        if getattr(self, "_last_video_sent_date", None) == today:
-            return  # Already sent a video today
 
         try:
             from supabase import create_client
@@ -633,8 +629,6 @@ class ArticleReviewCog(commands.Cog):
                 db.table("videos").update({"discord_sent": True, "download_url": None}).eq("id", v["id"]).execute()
             except Exception as _e:
                 logger.warning(f"Could not mark discord_sent for video {v['id']}: {_e}")
-
-            self._last_video_sent_date = today
 
         except Exception as e:
             logger.error(f"Video poll error: {e}", exc_info=True)
