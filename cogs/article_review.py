@@ -595,7 +595,7 @@ class ArticleReviewCog(commands.Cog):
             db = create_client(SUPABASE_URL, SUPABASE_KEY)
             result = (
                 db.table("videos")
-                .select("id, title, title_sk, youtube_url, category")
+                .select("id, title, title_sk, youtube_url, category, download_url")
                 .neq("discord_sent", True)
                 .order("scraped_at", desc=False)  # oldest first — FIFO queue
                 .limit(1)
@@ -612,6 +612,7 @@ class ArticleReviewCog(commands.Cog):
             v = result.data[0]
             title = v.get("title_sk") or v.get("title") or "Video"
             yt_url = v.get("youtube_url") or ""
+            dl_url = v.get("download_url") or ""
             cat = v.get("category") or ""
             category_icon = "🏑" if cat in ("dames", "heren") else "🎬"
             credits = "Credits: FIH Hockey" if cat.startswith("fih") else "Credits: Eyecons Hockey / HockeyNL"
@@ -619,6 +620,8 @@ class ArticleReviewCog(commands.Cog):
             lines = [f"{category_icon} **{title}**"]
             if yt_url:
                 lines.append(f"▶️ {yt_url}")
+            if dl_url:
+                lines.append(f"📥 Download: {dl_url}")
             lines.append(f"\n{credits}")
 
             await channel.send("\n".join(lines))
