@@ -582,93 +582,55 @@ class ArticleReviewCog(commands.Cog):
             logger.error(f"Poll error: {e}", exc_info=True)
 
     async def _check_new_videos(self):
+        """Send at most one video per day to Discord. No download — just the YouTube link."""
         if not SUPABASE_URL or not SUPABASE_KEY:
             return
+
+        today = datetime.now(timezone.utc).date()
+        if getattr(self, "_last_video_sent_date", None) == today:
+            return  # Already sent a video today
+
         try:
             from supabase import create_client
             db = create_client(SUPABASE_URL, SUPABASE_KEY)
             result = (
                 db.table("videos")
-                .select("id, title, title_sk, youtube_url, thumbnail_url, category")
+                .select("id, title, title_sk, youtube_url, category")
                 .neq("discord_sent", True)
-                .order("scraped_at", desc=True)
-                .limit(20)
+                .order("scraped_at", desc=False)  # oldest first — FIFO queue
+                .limit(1)
                 .execute()
             )
+
+            if not result.data:
+                return
 
             channel = self.bot.get_channel(DISCORD_CHANNEL_ID)
             if not channel:
                 return
 
-            new_videos = result.data or []
-            # Mark all as sent in Supabase immediately to prevent re-sending on restart
-            for video in new_videos:
-                try:
-                    db.table("videos").update({"discord_sent": True}).eq("id", video["id"]).execute()
-                except Exception as _e:
-                    logger.warning(f"Could not mark discord_sent for video {video['id']}: {_e}")
+            v = result.data[0]
+            title = v.get("title_sk") or v.get("title") or "Video"
+            yt_url = v.get("youtube_url") or ""
+            cat = v.get("category") or ""
+            category_icon = "🏑" if cat in ("dames", "heren") else "🎬"
+            credits = "Credits: FIH Hockey" if cat.startswith("fih") else "Credits: Eyecons Hockey / HockeyNL"
 
-            if not new_videos:
-                return
+            lines = [f"{category_icon} **{title}**"]
+            if yt_url:
+                lines.append(f"▶️ {yt_url}")
+            lines.append(f"\n{credits}")
 
-            logger.info(f"Sending {len(new_videos)} new videos to Discord")
+            await channel.send("\n".join(lines))
+            logger.info(f"Video sent to Discord: {v['id']} — {title[:60]}")
 
-            for v in new_videos:
-                title = v.get("title_sk") or v.get("title") or "Video"
-                yt_url = v.get("youtube_url") or ""
-                cat = v.get("category") or ""
-                category_icon = "🏑" if cat in ("dames", "heren") else "🎬"
-                if cat.startswith("fih"):
-                    credits = "Credits: FIH Hockey"
-                else:
-                    credits = "Credits: Eyecons Hockey / HockeyNL"
+            # Mark as sent
+            try:
+                db.table("videos").update({"discord_sent": True}).eq("id", v["id"]).execute()
+            except Exception as _e:
+                logger.warning(f"Could not mark discord_sent for video {v['id']}: {_e}")
 
-                if not yt_url:
-                    await channel.send(f"{category_icon} **{title}**\n{credits}")
-                    continue
-
-                import tempfile, os as _os, shutil
-                tmp_dir = tempfile.mkdtemp(prefix="pozemak_video_")
-                try:
-                    # Generate adjectives early so they appear in all paths
-                    adjectives = await generate_video_adjectives(title)
-                    adj_line = "  ".join(adjectives)
-
-                    status_msg = await channel.send(
-                        f"{category_icon} **{title}**\n⏳ Downloading video…"
-                    )
-                    video_path, description = await download_video(yt_url, tmp_dir)
-
-                    if video_path and _os.path.exists(video_path):
-                        size_mb = _os.path.getsize(video_path) / 1024 / 1024
-                        await status_msg.edit(
-                            content=f"{category_icon} **{title}**\n⏳ Uploading ({size_mb:.0f} MB)…"
-                        )
-                        download_url = await upload_to_catbox(video_path)
-
-                        # Build final message
-                        lines = [f"{category_icon} **{title}**"]
-                        lines.append(adj_line)
-                        if download_url:
-                            lines.append(f"📥 [Download video ({size_mb:.0f} MB)]({download_url})")
-                        lines.append(f"▶️ {yt_url}")
-                        lines.append(f"\n{credits}")
-
-                        await status_msg.edit(content="\n".join(lines))
-                        logger.info(f"Video sent: {download_url or yt_url}")
-                    else:
-                        lines = [
-                            f"{category_icon} **{title}**",
-                            adj_line,
-                            f"▶️ {yt_url}",
-                            f"\n{credits}",
-                        ]
-                        await status_msg.edit(content="\n".join(lines))
-                        logger.warning(f"Video download failed for {yt_url}")
-                except Exception as exc:
-                    logger.error(f"Video send error for {yt_url}: {exc}", exc_info=True)
-                finally:
-                    shutil.rmtree(tmp_dir, ignore_errors=True)
+            self._last_video_sent_date = today
 
         except Exception as e:
             logger.error(f"Video poll error: {e}", exc_info=True)
