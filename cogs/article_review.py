@@ -592,7 +592,7 @@ class ArticleReviewCog(commands.Cog):
             result = (
                 db.table("videos")
                 .select("id, title, title_sk, youtube_url, category, download_url")
-                .neq("discord_sent", True)
+                .or_("discord_sent.is.null,discord_sent.eq.false")
                 .not_.is_("download_url", "null")  # only send if download is ready
                 .order("scraped_at", desc=False)  # oldest first — FIFO queue
                 .limit(1)
