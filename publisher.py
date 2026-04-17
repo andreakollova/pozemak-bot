@@ -7,6 +7,23 @@ from config import WEBSITE_API_URL, WEBSITE_API_KEY
 logger = logging.getLogger(__name__)
 
 
+async def _send_push(title: str, source_url: str) -> None:
+    if not WEBSITE_API_URL or not WEBSITE_API_KEY:
+        return
+    slug = source_url.rstrip('/').split('/')[-1] if source_url else ''
+    url = f"/article/{slug}" if slug else '/'
+    try:
+        async with httpx.AsyncClient(timeout=10) as client:
+            await client.post(
+                f"{WEBSITE_API_URL.rstrip('/')}/api/push/send",
+                json={"title": "🏑 New article", "body": title, "url": url},
+                headers={"Content-Type": "application/json", "x-api-key": WEBSITE_API_KEY},
+            )
+        logger.info(f"Push sent for: {title[:60]}")
+    except Exception as e:
+        logger.warning(f"Push notification failed: {e}")
+
+
 async def publish_article(
     title: str,
     body: str,
@@ -57,4 +74,6 @@ async def publish_article(
         response.raise_for_status()
         data = response.json()
         logger.info(f"Article published successfully: {data}")
-        return data
+
+    await _send_push(title, source_url)
+    return data
