@@ -437,6 +437,7 @@ class BatchReviewView(discord.ui.View):
 class ArticleReviewCog(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
+        self._check_lock = asyncio.Lock()  # prevents concurrent _check_new_articles runs
         self.poll_articles.start()
         self.watch_trigger.start()
         # Make bot accessible to module-level reminder helper
@@ -482,8 +483,9 @@ class ArticleReviewCog(commands.Cog):
 
     @tasks.loop(seconds=POLL_INTERVAL)
     async def poll_articles(self):
-        await self._check_new_articles()
-        await self._check_new_videos()
+        async with self._check_lock:
+            await self._check_new_articles()
+            await self._check_new_videos()
 
     @poll_articles.before_loop
     async def before_poll(self):
@@ -499,8 +501,9 @@ class ArticleReviewCog(commands.Cog):
             except OSError:
                 pass
             logger.info("Trigger file detected — running immediate poll")
-            await self._check_new_articles()
-            await self._check_new_videos()
+            async with self._check_lock:
+                await self._check_new_articles()
+                await self._check_new_videos()
 
     @watch_trigger.before_loop
     async def before_watch(self):
@@ -536,6 +539,14 @@ class ArticleReviewCog(commands.Cog):
                 return
 
             logger.info(f"Found {len(new_articles)} new articles — translating...")
+
+            # Immediately claim these articles so no concurrent poll can pick them up again
+            try:
+                ids_to_claim = [str(a["id"]) for a in new_articles]
+                for aid in ids_to_claim:
+                    db.table("articles").update({"discord_sent": True}).eq("id", aid).execute()
+            except Exception as _claim_err:
+                logger.warning(f"Could not pre-claim articles: {_claim_err}")
 
             prepared: list[dict] = []
             for article in new_articles:
