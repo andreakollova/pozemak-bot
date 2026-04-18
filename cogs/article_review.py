@@ -517,14 +517,15 @@ class ArticleReviewCog(commands.Cog):
             from supabase import create_client
             db = create_client(SUPABASE_URL, SUPABASE_KEY)
             cutoff = (datetime.now(timezone.utc) - timedelta(days=7)).isoformat()
-            result = (
+
+            # Atomically claim unclaimed articles: UPDATE first, get back only the rows
+            # we just claimed. Two concurrent bot instances can never claim the same row.
+            claim = (
                 db.table("articles")
-                .select("*")
+                .update({"discord_sent": True})
+                .is_("discord_sent", "null")
                 .neq("rejected", True)
-                .or_("discord_sent.is.null,discord_sent.eq.false")
                 .gte("scraped_at", cutoff)
-                .order("scraped_at", desc=True)
-                .limit(100)
                 .execute()
             )
 
@@ -533,20 +534,12 @@ class ArticleReviewCog(commands.Cog):
                 logger.error(f"Channel {DISCORD_CHANNEL_ID} not found")
                 return
 
-            new_articles = list(reversed(result.data))
+            new_articles = list(reversed(claim.data or []))
 
             if not new_articles:
                 return
 
-            logger.info(f"Found {len(new_articles)} new articles — translating...")
-
-            # Immediately claim these articles so no concurrent poll can pick them up again
-            try:
-                ids_to_claim = [str(a["id"]) for a in new_articles]
-                for aid in ids_to_claim:
-                    db.table("articles").update({"discord_sent": True}).eq("id", aid).execute()
-            except Exception as _claim_err:
-                logger.warning(f"Could not pre-claim articles: {_claim_err}")
+            logger.info(f"Claimed {len(new_articles)} new articles — translating...")
 
             prepared: list[dict] = []
             for article in new_articles:
