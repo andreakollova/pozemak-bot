@@ -518,12 +518,13 @@ class ArticleReviewCog(commands.Cog):
             db = create_client(SUPABASE_URL, SUPABASE_KEY)
             cutoff = (datetime.now(timezone.utc) - timedelta(days=7)).isoformat()
 
-            # Atomically claim unclaimed articles: UPDATE first, get back only the rows
-            # we just claimed. Two concurrent bot instances can never claim the same row.
+            # Atomically claim unclaimed articles (discord_sent IS NULL or FALSE).
+            # UPDATE first and get back only rows we just claimed — two concurrent
+            # bot instances cannot claim the same row.
             claim = (
                 db.table("articles")
                 .update({"discord_sent": True})
-                .is_("discord_sent", "null")
+                .or_("discord_sent.is.null,discord_sent.eq.false")
                 .neq("rejected", True)
                 .gte("scraped_at", cutoff)
                 .execute()
@@ -678,6 +679,7 @@ class ArticleReviewCog(commands.Cog):
             emb.set_footer(text=f"ID: {a['supabase_id']}")
 
             view = ArticleConfirmView(a)
+            self.bot.add_view(view)  # register for persistence across restarts
             msg = await channel.send(
                 content="**📰 New article — approve?**",
                 embed=emb,
@@ -685,11 +687,6 @@ class ArticleReviewCog(commands.Cog):
             )
             a["discord_message_id"] = str(msg.id)
             await set_batch_message_id([a["supabase_id"]], str(msg.id), str(channel.id))
-            # Mark as sent in Supabase — survives bot restarts, no more SQLite dependency
-            try:
-                _db.table("articles").update({"discord_sent": True}).eq("id", a["supabase_id"]).execute()
-            except Exception as _e:
-                logger.warning(f"Could not mark discord_sent for {a['supabase_id']}: {_e}")
             logger.info(f"Sent article {a['supabase_id'][:8]} → Discord msg {msg.id}")
             await asyncio.sleep(0.5)
 
