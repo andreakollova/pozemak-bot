@@ -4,7 +4,7 @@ import uuid
 
 import httpx
 
-from config import INSTAGRAM_ACCESS_TOKEN, INSTAGRAM_ACCOUNT_ID, SUPABASE_URL, SUPABASE_KEY
+from config import INSTAGRAM_ACCESS_TOKEN, INSTAGRAM_ACCOUNT_ID, FACEBOOK_PAGE_ID, SUPABASE_URL, SUPABASE_KEY
 
 GRAPH_BASE = "https://graph.facebook.com/v21.0"
 STORAGE_BUCKET = "instagram-images"
@@ -59,6 +59,10 @@ async def post_to_instagram(image_bytes: bytes, caption: str) -> str:
         publish_resp.raise_for_status()
         media_id = publish_resp.json()["id"]
         logger.info(f"Published to Instagram: media_id={media_id}")
+
+        # Also post to Facebook Page
+        await _post_to_facebook(client, public_url, caption)
+
         return media_id
 
 
@@ -118,3 +122,22 @@ async def _wait_for_container(
     raise RuntimeError(
         f"Instagram container {container_id} did not reach FINISHED after {max_tries} attempts"
     )
+
+
+async def _post_to_facebook(client: httpx.AsyncClient, image_url: str, caption: str) -> None:
+    """Post a photo to the Hockey Refresh Facebook Page."""
+    try:
+        resp = await client.post(
+            f"{GRAPH_BASE}/{FACEBOOK_PAGE_ID}/photos",
+            params={
+                "url": image_url,
+                "caption": caption,
+                "access_token": INSTAGRAM_ACCESS_TOKEN,
+            },
+        )
+        if resp.status_code >= 400:
+            logger.error(f"Facebook post failed {resp.status_code}: {resp.text}")
+        else:
+            logger.info(f"Published to Facebook: {resp.json().get('id')}")
+    except Exception as e:
+        logger.error(f"Facebook post error: {e}")
