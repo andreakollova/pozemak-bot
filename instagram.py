@@ -60,8 +60,9 @@ async def post_to_instagram(image_bytes: bytes, caption: str) -> str:
         media_id = publish_resp.json()["id"]
         logger.info(f"Published to Instagram: media_id={media_id}")
 
-        # Also post to Facebook Page
+        # Also post to Facebook Page and Instagram Story
         await _post_to_facebook(client, public_url, caption)
+        await _post_to_ig_story(client, public_url)
 
         return media_id
 
@@ -122,6 +123,37 @@ async def _wait_for_container(
     raise RuntimeError(
         f"Instagram container {container_id} did not reach FINISHED after {max_tries} attempts"
     )
+
+
+async def _post_to_ig_story(client: httpx.AsyncClient, image_url: str) -> None:
+    """Post the same image as an Instagram Story."""
+    try:
+        container_resp = await client.post(
+            f"{GRAPH_BASE}/{INSTAGRAM_ACCOUNT_ID}/media",
+            params={
+                "image_url": image_url,
+                "media_type": "STORIES",
+                "access_token": INSTAGRAM_ACCESS_TOKEN,
+            },
+        )
+        if container_resp.status_code >= 400:
+            logger.error(f"IG Story container failed {container_resp.status_code}: {container_resp.text}")
+            return
+        container_id = container_resp.json()["id"]
+        await _wait_for_container(client, container_id)
+        publish_resp = await client.post(
+            f"{GRAPH_BASE}/{INSTAGRAM_ACCOUNT_ID}/media_publish",
+            params={
+                "creation_id": container_id,
+                "access_token": INSTAGRAM_ACCESS_TOKEN,
+            },
+        )
+        if publish_resp.status_code >= 400:
+            logger.error(f"IG Story publish failed {publish_resp.status_code}: {publish_resp.text}")
+        else:
+            logger.info(f"Published to Instagram Story: {publish_resp.json().get('id')}")
+    except Exception as e:
+        logger.error(f"IG Story error: {e}")
 
 
 async def _post_to_facebook(client: httpx.AsyncClient, image_url: str, caption: str) -> None:
