@@ -1,10 +1,14 @@
 import httpx
 import logging
+import random
 from datetime import datetime, timezone
 
 from config import WEBSITE_API_URL, WEBSITE_API_KEY
 
 logger = logging.getLogger(__name__)
+
+_PUSH_EMOJIS = ["🏑", "🔥", "💥", "⚡", "🚨", "🎯", "💪", "🌍", "🏆", "👊"]
+_PUSH_LABELS = ["TRENDING", "NEW", "TOP STORY", "TODAY'S HEADLINES", "BREAKING", "JUST IN", "HOT"]
 
 
 async def _send_push(title: str, source_url: str) -> None:
@@ -12,11 +16,13 @@ async def _send_push(title: str, source_url: str) -> None:
         return
     slug = source_url.rstrip('/').split('/')[-1] if source_url else ''
     url = f"/article/{slug}" if slug else '/'
+    emoji = random.choice(_PUSH_EMOJIS)
+    label = random.choice(_PUSH_LABELS)
     try:
         async with httpx.AsyncClient(timeout=10) as client:
             await client.post(
                 f"{WEBSITE_API_URL.rstrip('/')}/api/push/send",
-                json={"title": "🏑 New article", "body": title, "url": url},
+                json={"title": f"{emoji} {label}", "body": title, "url": url},
                 headers={"Content-Type": "application/json", "x-api-key": WEBSITE_API_KEY},
             )
         logger.info(f"Push sent for: {title[:60]}")
