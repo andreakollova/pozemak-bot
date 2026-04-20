@@ -457,14 +457,14 @@ class ArticleReviewCog(commands.Cog):
             db = create_client(SUPABASE_URL, SUPABASE_KEY)
             result = (
                 db.table("articles")
-                .select("id, title_sk, text_sk, image_url, url")
+                .select("id, title_sk, text_sk, image_url, url, discord_sent")
+                .eq("discord_sent", True)
                 .or_("published.eq.false,published.is.null")
                 .neq("rejected", True)
                 .order("scraped_at", desc=True)
                 .limit(100)
                 .execute()
             )
-            ids_to_mark: list[str] = []
             count = 0
             for row in result.data:
                 article = {
@@ -476,13 +476,6 @@ class ArticleReviewCog(commands.Cog):
                 }
                 self.bot.add_view(ArticleConfirmView(article))
                 count += 1
-                if not row.get("discord_sent"):
-                    ids_to_mark.append(str(row["id"]))
-            # Mark any restored articles as discord_sent=True so the poll
-            # loop doesn't resend them (they already have Discord messages).
-            if ids_to_mark:
-                db.table("articles").update({"discord_sent": True}).in_("id", ids_to_mark).execute()
-                logger.info(f"Marked {len(ids_to_mark)} restored article(s) as discord_sent=True")
             if count:
                 logger.info(f"Restored {count} persistent ArticleConfirmView(s) from Supabase")
         except Exception as e:
