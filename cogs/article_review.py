@@ -485,6 +485,7 @@ class ArticleReviewCog(commands.Cog):
     async def poll_articles(self):
         async with self._check_lock:
             await self._check_new_articles()
+            await self._check_new_videos()
 
     @poll_articles.before_loop
     async def before_poll(self):
@@ -587,7 +588,7 @@ class ArticleReviewCog(commands.Cog):
             logger.error(f"Poll error: {e}", exc_info=True)
 
     async def _check_new_videos(self):
-        """Send new videos to Discord — YouTube link + download link (when ready)."""
+        """Send new videos to Discord — YouTube link + title only."""
         if not SUPABASE_URL or not SUPABASE_KEY:
             return
 
@@ -596,10 +597,9 @@ class ArticleReviewCog(commands.Cog):
             db = create_client(SUPABASE_URL, SUPABASE_KEY)
             result = (
                 db.table("videos")
-                .select("id, title, title_sk, youtube_url, download_url, category")
+                .select("id, title, title_sk, youtube_url, category")
                 .or_("discord_sent.is.null,discord_sent.eq.false")
-                .not_.is_("download_url", "null")  # wait until download is ready
-                .order("scraped_at", desc=False)  # oldest first — FIFO queue
+                .order("scraped_at", desc=False)
                 .limit(1)
                 .execute()
             )
@@ -614,23 +614,18 @@ class ArticleReviewCog(commands.Cog):
             v = result.data[0]
             title = v.get("title_sk") or v.get("title") or "Video"
             yt_url = v.get("youtube_url") or ""
-            dl_url = v.get("download_url") or ""
             cat = v.get("category") or ""
             category_icon = "🏑" if cat in ("dames", "heren") else "🎬"
-            credits = "Credits: FIH Hockey" if cat.startswith("fih") else "Credits: Eyecons Hockey / HockeyNL"
 
             lines = [f"{category_icon} **{title}**"]
             if yt_url:
                 lines.append(f"▶️ {yt_url}")
-            if dl_url:
-                lines.append(f"⬇️ Download: {dl_url}")
-            lines.append(f"\n{credits}")
 
             await channel.send("\n".join(lines))
             logger.info(f"Video sent to Discord: {v['id']} — {title[:60]}")
 
             try:
-                db.table("videos").update({"discord_sent": True, "download_url": None}).eq("id", v["id"]).execute()
+                db.table("videos").update({"discord_sent": True}).eq("id", v["id"]).execute()
             except Exception as _e:
                 logger.warning(f"Could not mark discord_sent for video {v['id']}: {_e}")
 
