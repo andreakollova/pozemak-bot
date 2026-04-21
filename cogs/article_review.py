@@ -485,7 +485,6 @@ class ArticleReviewCog(commands.Cog):
     async def poll_articles(self):
         async with self._check_lock:
             await self._check_new_articles()
-            await self._check_new_videos()
 
     @poll_articles.before_loop
     async def before_poll(self):
