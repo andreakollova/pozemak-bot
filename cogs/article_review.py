@@ -531,6 +531,7 @@ class ArticleReviewCog(commands.Cog):
                 .or_("discord_sent.is.null,discord_sent.eq.false")
                 .neq("rejected", True)
                 .gte("scraped_at", cutoff)
+                .limit(10)
                 .execute()
             )
 
@@ -539,7 +540,14 @@ class ArticleReviewCog(commands.Cog):
                 logger.error(f"Channel {DISCORD_CHANNEL_ID} not found")
                 return
 
-            new_articles = list(reversed(claim.data or []))
+            # Filter out articles already processed in this session (guards against race conditions)
+            all_claimed = list(reversed(claim.data or []))
+            new_articles = []
+            for a in all_claimed:
+                if not await is_processed(str(a["id"])):
+                    new_articles.append(a)
+                else:
+                    logger.info(f"Skipping already-processed article {a['id']}")
 
             if not new_articles:
                 return
