@@ -126,7 +126,7 @@ def build_instagram_caption(title: str, body: str, flag: str = "🇳🇱", credi
     pairs = [" ".join(sentences[i:i+4]) for i in range(0, len(sentences), 4)]
     paragraphs = [f"{_PARA_EMOJIS[i % len(_PARA_EMOJIS)]} {pair}" for i, pair in enumerate(pairs)]
 
-    FOOTER = f"Credit: {credit}\n\n👀 For more hockey news check out hockeyrefresh.com"
+    FOOTER = f"📸 Credit: {credit}\n\n👀 For more hockey news check out hockeyrefresh.com"
     IG_LIMIT = 2190
 
     header = f"{flag} {title}"
