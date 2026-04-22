@@ -13,7 +13,6 @@ from discord.ext import commands, tasks
 
 from config import DISCORD_CHANNEL_ID, POLL_INTERVAL, SUPABASE_URL, SUPABASE_KEY
 from database import (
-    is_processed,
     add_pending_article,
     update_article_status_by_supabase_id,
     set_batch_message_id,
@@ -540,14 +539,7 @@ class ArticleReviewCog(commands.Cog):
                 logger.error(f"Channel {DISCORD_CHANNEL_ID} not found")
                 return
 
-            # Filter out articles already processed in this session (guards against race conditions)
-            all_claimed = list(reversed(claim.data or []))
-            new_articles = []
-            for a in all_claimed:
-                if not await is_processed(str(a["id"])):
-                    new_articles.append(a)
-                else:
-                    logger.info(f"Skipping already-processed article {a['id']}")
+            new_articles = list(reversed(claim.data or []))
 
             if not new_articles:
                 return
