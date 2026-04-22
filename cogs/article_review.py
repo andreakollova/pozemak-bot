@@ -530,7 +530,6 @@ class ArticleReviewCog(commands.Cog):
                 .or_("discord_sent.is.null,discord_sent.eq.false")
                 .neq("rejected", True)
                 .gte("scraped_at", cutoff)
-                .limit(10)
                 .execute()
             )
 
