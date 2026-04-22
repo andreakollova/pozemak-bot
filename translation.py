@@ -27,7 +27,7 @@ Use the correct pronouns (he/his or she/her) consistently throughout the article
 
 WRITING STYLE:
 - Write in a warm, engaging, easy-to-read style — like a knowledgeable friend explaining the match.
-- Use clear, simple language. Prefer short sentences. Avoid jargon and overly complex vocabulary.
+- Use clear, everyday language. Prefer short sentences. Avoid rare or overly complex vocabulary — if a simpler word works just as well, use it. Write at a level anyone who follows hockey can comfortably read.
 - Mix short punchy sentences with slightly longer ones for natural rhythm.
 - Use active voice. Be direct and confident, not stiff or formal.
 - Make the reader feel the energy of the game — but stay factual and accurate.
