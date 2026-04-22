@@ -11,7 +11,7 @@ STORAGE_BUCKET = "instagram-images"
 logger = logging.getLogger(__name__)
 
 
-async def post_to_instagram(image_bytes: bytes, caption: str) -> str:
+async def post_to_instagram(image_bytes: bytes, caption: str, story_bytes: bytes | None = None) -> str:
     """Upload image_bytes and publish a post to Instagram.
 
     Steps:
@@ -62,7 +62,8 @@ async def post_to_instagram(image_bytes: bytes, caption: str) -> str:
 
         # Also post to Facebook Page and Instagram Story
         await _post_to_facebook(client, public_url, caption)
-        await _post_to_ig_story(client, public_url)
+        story_url = await _upload_to_supabase(story_bytes) if story_bytes else public_url
+        await _post_to_ig_story(client, story_url)
 
         return media_id
 

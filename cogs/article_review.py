@@ -187,9 +187,11 @@ async def _publish_article(article: dict, post_ig: bool) -> str:
         # Apply PNG template overlay (auto-selects country template from source_url)
         src_url = article.get("source_url", "")
         img_bytes = await create_instagram_image(photo_bytes, source_url=src_url)
+        from canva import create_story_image
+        story_bytes = create_story_image(photo_bytes)
         flag, credit = _source_info(src_url)
         caption = build_instagram_caption(title, body, flag=flag, credit=credit)
-        await post_to_instagram(img_bytes, caption)
+        await post_to_instagram(img_bytes, caption, story_bytes=story_bytes)
         # Schedule 30-minute reminder
         asyncio.get_event_loop().call_later(
             30 * 60,

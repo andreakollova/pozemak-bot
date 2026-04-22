@@ -9,8 +9,9 @@ from config import CANVA_API_KEY, CANVA_TEMPLATE_ID
 
 logger = logging.getLogger(__name__)
 
-TEMPLATE_PATH     = Path(__file__).parent / "template.png"
-TEMPLATE_PATH_GBR = Path(__file__).parent / "template-gbr.png"
+TEMPLATE_PATH      = Path(__file__).parent / "template.png"
+TEMPLATE_PATH_GBR  = Path(__file__).parent / "template-gbr.png"
+STORY_TEMPLATE_PATH = Path(__file__).parent / "stories.png"
 
 # Domain → template file mapping for additional countries
 COUNTRY_TEMPLATES: dict[str, Path] = {
@@ -176,3 +177,39 @@ async def create_instagram_image(
 ) -> bytes:
     """Apply the PNG template over the article photo and return JPEG bytes."""
     return create_instagram_image_pillow(photo_bytes, gbr=gbr, source_url=source_url)
+
+
+def create_story_image(photo_bytes: bytes | None = None) -> bytes:
+    """Composite article photo under the story template (9:16) and return JPEG bytes."""
+    from PIL import Image
+
+    if not STORY_TEMPLATE_PATH.exists():
+        raise FileNotFoundError(f"Story template not found: {STORY_TEMPLATE_PATH}")
+
+    template = Image.open(STORY_TEMPLATE_PATH).convert("RGBA")
+    tw, th = template.size
+
+    if photo_bytes:
+        try:
+            photo = Image.open(io.BytesIO(photo_bytes)).convert("RGBA")
+            photo_ratio = photo.width / photo.height
+            tmpl_ratio  = tw / th
+            if photo_ratio > tmpl_ratio:
+                new_w = int(photo.height * tmpl_ratio)
+                offset = (photo.width - new_w) // 2
+                photo = photo.crop((offset, 0, offset + new_w, photo.height))
+            else:
+                new_h = int(photo.width / tmpl_ratio)
+                offset = (photo.height - new_h) // 2
+                photo = photo.crop((0, offset, photo.width, offset + new_h))
+            photo = photo.resize((tw, th), Image.LANCZOS)
+        except Exception as exc:
+            logger.warning(f"Could not process story photo: {exc}")
+            photo = Image.new("RGBA", (tw, th), (0, 0, 0, 255))
+    else:
+        photo = Image.new("RGBA", (tw, th), (0, 0, 0, 255))
+
+    result = Image.alpha_composite(photo, template)
+    buffer = io.BytesIO()
+    result.convert("RGB").save(buffer, format="JPEG", quality=95)
+    return buffer.getvalue()
