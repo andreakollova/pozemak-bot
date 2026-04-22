@@ -126,12 +126,13 @@ def build_instagram_caption(title: str, body: str, flag: str = "🇳🇱", credi
     pairs = [" ".join(sentences[i:i+4]) for i in range(0, len(sentences), 4)]
     paragraphs = [f"{_PARA_EMOJIS[i % len(_PARA_EMOJIS)]} {pair}" for i, pair in enumerate(pairs)]
 
-    FOOTER = f"📸 Credit: {credit}\n\n👀 For more hockey news check out hockeyrefresh.com\n\n#fieldhockey"
+    FOOTER = f"📸 Credit: {credit}\n\n👀 For more hockey news check out hockeyrefresh.com"
+    HASHTAG = "#fieldhockey"
     IG_LIMIT = 2190
 
     header = f"{flag} {title}"
     caption_parts = [header]
-    used = _ig_len(header) + 2 + _ig_len(FOOTER)
+    used = _ig_len(header) + 2 + _ig_len(HASHTAG) + 2 + _ig_len(FOOTER)
 
     for para in paragraphs:
         chunk = "\n\n" + para
@@ -140,6 +141,7 @@ def build_instagram_caption(title: str, body: str, flag: str = "🇳🇱", credi
         caption_parts.append(para)
         used += _ig_len(chunk)
 
+    caption_parts.append(HASHTAG)
     caption_parts.append(FOOTER)
     caption = "\n\n".join(caption_parts)
 
