@@ -527,7 +527,6 @@ class ArticleReviewCog(commands.Cog):
                 db.table("articles")
                 .update({"discord_sent": True})
                 .or_("discord_sent.is.null,discord_sent.eq.false")
-                .or_("published.is.null,published.eq.false")
                 .neq("rejected", True)
                 .gte("scraped_at", cutoff)
                 .execute()
