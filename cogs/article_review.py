@@ -650,6 +650,8 @@ class ArticleReviewCog(commands.Cog):
             "🏴󠁧󠁢󠁳󠁣󠁴󠁿": "Scotland", "🇦🇺": "Australia", "🇪🇸": "Spain",
             "🇦🇷": "Argentina", "🇩🇪": "Germany", "🇧🇪": "Belgium",
             "🇮🇳": "India", "🇪🇺": "EuroHockey", "🏑": "FIH Hockey",
+            "🏴󠁧󠁢󠁥󠁮󠁧󠁿": "England", "🏴󠁧󠁢󠁷󠁬󠁳󠁿": "Wales",
+            "🇺🇾": "Uruguay", "🇳🇿": "New Zealand", "🇨🇦": "Canada",
         }
         _EMBED_COLORS = {
             "🇳🇱": discord.Color.orange(),
@@ -661,9 +663,14 @@ class ArticleReviewCog(commands.Cog):
             "🇦🇷": discord.Color.from_rgb(116, 172, 223),
             "🇩🇪": discord.Color.from_rgb(80, 80, 80),
             "🇧🇪": discord.Color.from_rgb(0, 100, 200),
-            "🇮🇳": discord.Color.from_rgb(255, 153, 51),   # India saffron
-            "🇪🇺": discord.Color.from_rgb(0, 70, 153),     # EuroHockey blue
-            "🏑": discord.Color.from_rgb(0, 150, 100),      # FIH green
+            "🇮🇳": discord.Color.from_rgb(255, 153, 51),
+            "🇪🇺": discord.Color.from_rgb(0, 70, 153),
+            "🏑": discord.Color.from_rgb(0, 150, 100),
+            "🏴󠁧󠁢󠁥󠁮󠁧󠁿": discord.Color.from_rgb(200, 16, 46),   # England red
+            "🏴󠁧󠁢󠁷󠁬󠁳󠁿": discord.Color.from_rgb(0, 163, 68),    # Wales green
+            "🇺🇾": discord.Color.from_rgb(0, 56, 168),             # Uruguay blue
+            "🇳🇿": discord.Color.from_rgb(0, 56, 168),             # NZ blue
+            "🇨🇦": discord.Color.from_rgb(255, 0, 0),              # Canada red
         }
 
         for a in batch:
