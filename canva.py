@@ -26,6 +26,11 @@ COUNTRY_TEMPLATES: dict[str, Path] = {
     "hockeyindia.org":     Path(__file__).parent / "template-india.png",
     "eurohockey.org":      Path(__file__).parent / "template-worldwide.png",
     "fih.hockey":          Path(__file__).parent / "template-worldwide.png",
+    "englandhockey.co.uk": Path(__file__).parent / "template-england.png",
+    "hockeywales.org.uk":  Path(__file__).parent / "template-wales.png",
+    "hockey.com.uy":       Path(__file__).parent / "template-uruguay.png",
+    "hockeynz.co.nz":      Path(__file__).parent / "template-nz.png",
+    "fieldhockey.ca":      Path(__file__).parent / "template-canada.png",
 }
 
 
