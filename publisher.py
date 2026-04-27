@@ -22,7 +22,7 @@ async def _send_push(title: str, source_url: str) -> None:
         async with httpx.AsyncClient(timeout=10) as client:
             await client.post(
                 f"{WEBSITE_API_URL.rstrip('/')}/api/push/send",
-                json={"title": "Hockey Refresh", "body": f"{emoji} {title}", "url": url},
+                json={"title": "Hockey Refresh", "body": f"{emoji} {label}: {title}", "url": url},
                 headers={"Content-Type": "application/json", "x-api-key": WEBSITE_API_KEY},
             )
         logger.info(f"Push sent for: {title[:60]}")
