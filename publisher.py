@@ -7,7 +7,7 @@ from config import WEBSITE_API_URL, WEBSITE_API_KEY
 
 logger = logging.getLogger(__name__)
 
-_PUSH_EMOJIS = ["🏑", "🔥", "💥", "⚡", "🚨", "🎯", "💪", "🌍", "🏆", "👊"]
+_PUSH_EMOJIS = ["🏑", "🔥", "💥", "⚡", "🚨", "🎯", "💪", "👊"]
 _PUSH_LABELS = ["TRENDING", "NEW", "TOP STORY", "TODAY'S HEADLINES", "BREAKING", "JUST IN", "HOT"]
 
 
