@@ -37,6 +37,7 @@ async def publish_article(
     source_url: str,
     supabase_id: str | None = None,
     top_story: bool = False,
+    send_push: bool = False,
 ) -> dict:
     """Update existing Supabase article with Slovak translation via the website API.
 
@@ -81,5 +82,6 @@ async def publish_article(
         data = response.json()
         logger.info(f"Article published successfully: {data}")
 
-    await _send_push(title, source_url)
+    if send_push:
+        await _send_push(title, source_url)
     return data
