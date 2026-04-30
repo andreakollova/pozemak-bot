@@ -144,35 +144,41 @@ def create_instagram_image_pillow(
     tw, th = template.size
 
     # Background: photo or solid black
-    if photo_bytes:
-        try:
-            photo = Image.open(io.BytesIO(photo_bytes)).convert("RGBA")
-            # Crop to same aspect ratio as template, then resize
-            photo_ratio = photo.width / photo.height
-            tmpl_ratio  = tw / th
-            if photo_ratio > tmpl_ratio:
-                # Photo is wider — crop sides
-                new_w = int(photo.height * tmpl_ratio)
-                offset = (photo.width - new_w) // 2
-                photo = photo.crop((offset, 0, offset + new_w, photo.height))
-            else:
-                # Photo is taller — crop top/bottom from center
-                new_h = int(photo.width / tmpl_ratio)
-                offset = (photo.height - new_h) // 2
-                photo = photo.crop((0, offset, photo.width, offset + new_h))
-            photo = photo.resize((tw, th), Image.LANCZOS)
-        except Exception as exc:
-            logger.warning(f"Could not process photo: {exc}")
+    photo = None
+    result = None
+    try:
+        if photo_bytes:
+            try:
+                photo = Image.open(io.BytesIO(photo_bytes)).convert("RGBA")
+                photo_ratio = photo.width / photo.height
+                tmpl_ratio  = tw / th
+                if photo_ratio > tmpl_ratio:
+                    new_w = int(photo.height * tmpl_ratio)
+                    offset = (photo.width - new_w) // 2
+                    photo = photo.crop((offset, 0, offset + new_w, photo.height))
+                else:
+                    new_h = int(photo.width / tmpl_ratio)
+                    offset = (photo.height - new_h) // 2
+                    photo = photo.crop((0, offset, photo.width, offset + new_h))
+                photo = photo.resize((tw, th), Image.LANCZOS)
+            except Exception as exc:
+                logger.warning(f"Could not process photo: {exc}")
+                if photo:
+                    photo.close()
+                photo = Image.new("RGBA", (tw, th), (0, 0, 0, 255))
+        else:
             photo = Image.new("RGBA", (tw, th), (0, 0, 0, 255))
-    else:
-        photo = Image.new("RGBA", (tw, th), (0, 0, 0, 255))
 
-    # Template goes ON TOP of photo
-    result = Image.alpha_composite(photo, template)
-
-    buffer = io.BytesIO()
-    result.convert("RGB").save(buffer, format="JPEG", quality=95)
-    return buffer.getvalue()
+        result = Image.alpha_composite(photo, template)
+        buffer = io.BytesIO()
+        result.convert("RGB").save(buffer, format="JPEG", quality=85)
+        return buffer.getvalue()
+    finally:
+        if photo:
+            photo.close()
+        if result:
+            result.close()
+        template.close()
 
 
 async def create_instagram_image(
@@ -194,27 +200,38 @@ def create_story_image(photo_bytes: bytes | None = None) -> bytes:
     template = Image.open(STORY_TEMPLATE_PATH).convert("RGBA")
     tw, th = template.size
 
-    if photo_bytes:
-        try:
-            photo = Image.open(io.BytesIO(photo_bytes)).convert("RGBA")
-            photo_ratio = photo.width / photo.height
-            tmpl_ratio  = tw / th
-            if photo_ratio > tmpl_ratio:
-                new_w = int(photo.height * tmpl_ratio)
-                offset = (photo.width - new_w) // 2
-                photo = photo.crop((offset, 0, offset + new_w, photo.height))
-            else:
-                new_h = int(photo.width / tmpl_ratio)
-                offset = (photo.height - new_h) // 2
-                photo = photo.crop((0, offset, photo.width, offset + new_h))
-            photo = photo.resize((tw, th), Image.LANCZOS)
-        except Exception as exc:
-            logger.warning(f"Could not process story photo: {exc}")
+    photo = None
+    result = None
+    try:
+        if photo_bytes:
+            try:
+                photo = Image.open(io.BytesIO(photo_bytes)).convert("RGBA")
+                photo_ratio = photo.width / photo.height
+                tmpl_ratio  = tw / th
+                if photo_ratio > tmpl_ratio:
+                    new_w = int(photo.height * tmpl_ratio)
+                    offset = (photo.width - new_w) // 2
+                    photo = photo.crop((offset, 0, offset + new_w, photo.height))
+                else:
+                    new_h = int(photo.width / tmpl_ratio)
+                    offset = (photo.height - new_h) // 2
+                    photo = photo.crop((0, offset, photo.width, offset + new_h))
+                photo = photo.resize((tw, th), Image.LANCZOS)
+            except Exception as exc:
+                logger.warning(f"Could not process story photo: {exc}")
+                if photo:
+                    photo.close()
+                photo = Image.new("RGBA", (tw, th), (0, 0, 0, 255))
+        else:
             photo = Image.new("RGBA", (tw, th), (0, 0, 0, 255))
-    else:
-        photo = Image.new("RGBA", (tw, th), (0, 0, 0, 255))
 
-    result = Image.alpha_composite(photo, template)
-    buffer = io.BytesIO()
-    result.convert("RGB").save(buffer, format="JPEG", quality=95)
-    return buffer.getvalue()
+        result = Image.alpha_composite(photo, template)
+        buffer = io.BytesIO()
+        result.convert("RGB").save(buffer, format="JPEG", quality=85)
+        return buffer.getvalue()
+    finally:
+        if photo:
+            photo.close()
+        if result:
+            result.close()
+        template.close()
