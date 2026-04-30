@@ -553,6 +553,13 @@ class ArticleReviewCog(commands.Cog):
 
             prepared: list[dict] = []
             for article in new_articles:
+                sid = str(article["id"])
+
+                # Skip if already in local DB (prevents duplicates on bot restart or two instances)
+                if await is_processed(sid):
+                    logger.info(f"Skipping already-processed article {sid[:8]}")
+                    continue
+
                 orig_title = article.get("title", "")
                 orig_text  = article.get("text", "")
                 stored_title_sk = article.get("title_sk") or ""
@@ -572,7 +579,7 @@ class ArticleReviewCog(commands.Cog):
                 source    = article.get("url", "")
 
                 await add_pending_article(
-                    supabase_id=str(article["id"]),
+                    supabase_id=sid,
                     discord_message_id="pending",
                     channel_id=str(channel.id),
                     title_sk=title_sk,
@@ -581,7 +588,7 @@ class ArticleReviewCog(commands.Cog):
                     source_url=source,
                 )
                 prepared.append({
-                    "supabase_id": str(article["id"]),
+                    "supabase_id": sid,
                     "title_sk": title_sk,
                     "body_sk": body_sk,
                     "image_url": image_url,
