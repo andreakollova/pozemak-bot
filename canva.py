@@ -171,7 +171,7 @@ def create_instagram_image_pillow(
 
         result = Image.alpha_composite(photo, template)
         buffer = io.BytesIO()
-        result.convert("RGB").save(buffer, format="JPEG", quality=85)
+        result.convert("RGB").save(buffer, format="JPEG", quality=95)
         return buffer.getvalue()
     finally:
         if photo:
@@ -227,7 +227,7 @@ def create_story_image(photo_bytes: bytes | None = None) -> bytes:
 
         result = Image.alpha_composite(photo, template)
         buffer = io.BytesIO()
-        result.convert("RGB").save(buffer, format="JPEG", quality=85)
+        result.convert("RGB").save(buffer, format="JPEG", quality=95)
         return buffer.getvalue()
     finally:
         if photo:
