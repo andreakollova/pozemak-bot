@@ -73,16 +73,25 @@ async def _upload_to_supabase(image_bytes: bytes) -> str:
     if not SUPABASE_URL or not SUPABASE_KEY:
         raise ValueError("Supabase credentials not configured")
 
+    import asyncio
     from supabase import create_client
     db = create_client(SUPABASE_URL, SUPABASE_KEY)
 
     filename = f"{uuid.uuid4().hex}.jpg"
-    db.storage.from_(STORAGE_BUCKET).upload(
-        path=filename,
-        file=image_bytes,
-        file_options={"content-type": "image/jpeg"},
+
+    def _do_upload():
+        db.storage.from_(STORAGE_BUCKET).upload(
+            path=filename,
+            file=image_bytes,
+            file_options={"content-type": "image/jpeg"},
+        )
+        return db.storage.from_(STORAGE_BUCKET).get_public_url(filename)
+
+    loop = asyncio.get_event_loop()
+    public_url = await asyncio.wait_for(
+        loop.run_in_executor(None, _do_upload),
+        timeout=60,
     )
-    public_url = db.storage.from_(STORAGE_BUCKET).get_public_url(filename)
     logger.debug(f"Supabase Storage upload success: {public_url}")
     return public_url
 
