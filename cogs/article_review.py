@@ -14,6 +14,7 @@ from discord.ext import commands, tasks
 from config import DISCORD_CHANNEL_ID, POLL_INTERVAL, SUPABASE_URL, SUPABASE_KEY
 from database import (
     add_pending_article,
+    is_processed,
     update_article_status_by_supabase_id,
     set_batch_message_id,
     get_all_pending,
